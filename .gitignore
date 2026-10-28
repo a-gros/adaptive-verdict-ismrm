@@ -1,0 +1,25 @@
+# Python / Jupyter
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+
+# Generated synthetic data
+data/*
+!data/README.md
+
+# Generated model checkpoints
+checkpoints/*
+!checkpoints/README.md
+
+# Generated results
+results/*
+!results/README.md
+
+# Generated acquisition helper created by Notebook 01
+acquisition/NV_microtorch_bvals.generated.txt

@@ -1,0 +1,119 @@
+# Adaptive VERDICT model selection for brain tumours
+
+This repository contains a notebook-based workflow for adaptive diffusion compartment model selection in brain-tumour VERDICT-MRI. Rather than assuming a single fixed model for all signals, the framework uses a simulation-trained multilayer perceptron (MLP) to select among nine predefined VERDICT-related compartment models on a signal-wise basis.
+
+The candidate models vary the representation of extracellular–extravascular diffusion, intracellular restriction and vascular pseudo-diffusion. Synthetic signals are generated using the acquisition scheme of the brain-tumour VERDICT study, and the classifier learns to distinguish the model that generated each signal.
+
+The workflow builds on [microTorch](https://github.com/snigdha-sen/microtorch) for the underlying diffusion signal models and adds the brain-tumour-specific model definitions, simulation strategy and machine-learning workflow used in this MSc project.
+
+This work was carried out at University College London (UCL) as part of the MSc in AI for Biomedicine and Healthcare, supervised by Associate Professor Eleftheria Panagiotaki and Dr Matteo Figini. Please contact the repository author through GitHub with any questions.
+
+## Installation
+
+Clone or download the repository and install the required packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Workflow
+
+The main notebooks are intended to be run in order:
+
+1. `notebooks/01_generate_synthetic_data.ipynb` — generate the clean acquisition-matched nine-class synthetic dataset.
+2. `notebooks/02_train_mlp.ipynb` — trains the MLP on synthetic signals with dynamically generated Rician noise over an SNR range of 30–70.
+3. `notebooks/03_simulation_evaluation.ipynb` — evaluates the trained MLP on the held-out synthetic test set.
+
+## Acquisition
+
+The classifier is acquisition-specific and expects the same ordered 131 diffusion-weighted measurements used during training. These are obtained from the supplied `acquisition/NV.scheme` by simulating the full 153-measurement protocol and removing the 22 reference measurements.
+
+Using a different acquisition protocol or measurement order requires acquisition-matched retraining or a separately validated adaptation.
+
+## Relationship to microTorch
+
+microTorch provides the Ball, Zeppelin, Tensor, AstroSticks and Stick diffusion-compartment implementations used in this work. Its VERDICT implementation is described in the ssVERDICT work for prostate MRI, while this project uses these building blocks for adaptive model selection in brain tumours.
+
+### Study-specific extension to microTorch
+
+- **`SphereVariableD`** — a custom Sphere implementation was added so that both cell radius and intracellular diffusivity \(D_{IC}\) could vary.
+
+### Study-specific simulation setup
+
+The following choices define how the microTorch components were used for the brain-tumour application. They do not modify the underlying Ball, Zeppelin, Tensor, Stick or AstroSticks signal equations:
+
+- parameter ranges and sampling rules matched to the brain-tumour model constraints;
+- isotropic orientation sampling for anisotropic compartments;
+- constrained compartment-fraction sampling using symmetric Dirichlet distributions, with a minimum fraction of 0.01 and fractions summing to one;
+- explicit construction of the nine candidate model combinations used as classifier classes;
+- conversion of the brain-tumour `NV.scheme` into the acquisition representation required for simulation;
+- simulation using all 153 measurements, followed by removal of the 22 reference measurements to form the ordered 131-measurement MLP input.
+
+### Local technical fixes
+
+The original MSc experiments used the microTorch `development` branch at commit:
+
+`b67c7a069bc28b19d3aaaa0ebb2ba7e67fde979d`
+
+Two local `__init__.py` files were modified to disable unavailable or circular imports in that local installation. These were technical fixes only and did not alter the signal-model equations used in this study.
+
+## Synthetic data
+
+Notebook 01 generates 200,000 signals per candidate model, giving 1.8 million clean synthetic signals in total. The generating model, sampled parameters and compartment fractions are retained, and the parameter constraints are documented directly in the notebook.
+
+The synthetic data use a fixed stratified 80/10/10 training, validation and held-out test split.
+
+## Noise augmentation
+
+During training, Rician noise was added dynamically to the clean synthetic signals. For each training example, an SNR was sampled from `Uniform(30, 70)`, and a new noise realisation was generated each time that signal was used.
+
+A fixed variable-SNR validation set was used for checkpoint selection, while the held-out test set was reserved for final robustness evaluation.
+
+## Data availability
+
+No patient MRI data, ROI masks or patient metadata are included in this repository.
+
+The synthetic datasets generated by Notebook 01 are large and are excluded from version control. The code required to regenerate them from the supplied acquisition scheme is included.
+
+## Repository structure
+
+```text
+verdict-ismrm/
+├── README.md
+├── requirements.txt
+├── acquisition/
+│   ├── NV.scheme
+│   └── README.md
+├── notebooks/
+│   ├── 01_generate_synthetic_data.ipynb
+│   ├── 02_train_mlp.ipynb
+│   └── 03_simulation_evaluation.ipynb
+├── data/
+│   └── README.md
+├── checkpoints/
+│   └── README.md
+└── results/
+    └── README.md
+```
+
+## Citation
+
+If you use this code, please cite the microTorch software:
+
+[1] Sen S, Ahmed R, Arends GC, et al. **microTorch: A Software Package for Fast and Flexible Self-Supervised Diffusion MRI Model Fitting.** *Journal of Open Research Software*. 2026;14:59. DOI: [https://doi.org/10.5334/jors.736](https://doi.org/10.5334/jors.736)
+
+For the VERDICT implementation used through microTorch, please also cite:
+
+[2] Sen S, Singh S, Pye H, et al. **ssVERDICT: Self-supervised VERDICT-MRI for enhanced prostate tumor characterization.** *Magnetic Resonance in Medicine*. 2024;92:2181–2192. DOI: [https://doi.org/10.1002/mrm.30186](https://doi.org/10.1002/mrm.30186)
+
+The compartment-model framework and terminology used to construct the candidate models build on:
+
+[3] Panagiotaki E, Schneider T, Siow B, Hall MG, Lythgoe MF, Alexander DC. **Compartment models of the diffusion MR signal in brain white matter: A taxonomy and comparison.** *NeuroImage*. 2012;59:2241–2254. DOI: [https://doi.org/10.1016/j.neuroimage.2011.09.081](https://doi.org/10.1016/j.neuroimage.2011.09.081)
+
+The original VERDICT tumour framework was introduced in:
+
+[4] Panagiotaki E, Walker-Samuel S, Siow B, et al. **Noninvasive Quantification of Solid Tumor Microstructure Using VERDICT MRI.** *Cancer Research*. 2014;74(7):1902–1912. DOI: [https://doi.org/10.1158/0008-5472.CAN-13-2511](https://doi.org/10.1158/0008-5472.CAN-13-2511)
+
+For the application and adaptation of VERDICT-MRI to brain tumours, please also cite:
+
+[5] Figini M, Castellano A, Bailo M, et al. **Comprehensive Brain Tumour Characterisation with VERDICT-MRI: Evaluation of Cellular and Vascular Measures Validated by Histology.** *Cancers*. 2023;15(9):2490. DOI: [https://doi.org/10.3390/cancers15092490](https://doi.org/10.3390/cancers15092490)
