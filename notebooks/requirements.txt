@@ -1,7 +1,0 @@
-microtorch-mri
-torch
-numpy
-pandas
-scikit-learn
-matplotlib
-jupyter
